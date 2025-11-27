@@ -1,14 +1,29 @@
+from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
+from redis import asyncio as aioredis
 import uvicorn
 from fastapi import Depends, FastAPI, Query
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from dz9.main import StudentRepo, engine
 from dz11.auth import UserSchema, auth_router, get_current_user
 
-app = FastAPI()
+
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    redis = aioredis.from_url(
+        "redis://localhost", encoding="utf8", decode_responses=False
+    )
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+    yield
+
+
+app = FastAPI(lifespan=app_lifespan)
 
 app.include_router(auth_router)
 
@@ -48,6 +63,7 @@ StudentRepoDepends = Annotated[StudentRepo, Depends(student_repo_depends)]
 
 
 @app.get("/")
+@cache(expire=60)
 def get_students(
     student: Annotated[StudentFilters, Query()],
     student_repo: StudentRepoDepends,
@@ -58,6 +74,7 @@ def get_students(
 
 
 @app.post("/")
+@cache(expire=60)
 def create_student(
     student: StudentBaseSchema,
     student_repo: StudentRepoDepends,
@@ -68,6 +85,7 @@ def create_student(
 
 
 @app.put("/")
+@cache(expire=60)
 def update_student(
     student: StudentSchema,
     student_repo: StudentRepoDepends,
@@ -78,6 +96,7 @@ def update_student(
 
 
 @app.delete("/{id}")
+@cache(expire=60)
 def delete_student(
     id: int,
     student_repo: StudentRepoDepends,

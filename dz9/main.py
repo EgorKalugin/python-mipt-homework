@@ -93,6 +93,13 @@ class StudentRepo:
         self.session.execute(delete(StudentWithMark).where(StudentWithMark.id == id))
         self.session.commit()
 
+    def delete_users(
+        self,
+        ids: list[int],
+    ):
+        self.session.execute(delete(StudentWithMark).where(StudentWithMark.id.in_(ids)))
+        self.session.commit()
+
     def get_students_with_low_marks_on_courses(
         self, course: str
     ) -> list[StudentWithMark]:
